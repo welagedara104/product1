@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f4ef;
+  --foreground: #12212b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-report-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid #0f6b5c;
+  outline-offset: 2px;
+}

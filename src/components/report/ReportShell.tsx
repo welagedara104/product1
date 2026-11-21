@@ -172,8 +172,8 @@ export function ReportShell({ report }: { report: ReportDocument }) {
           <section className="chapter" id="fourc" data-chapter-id="fourc">
             <h2>Your customer: the four Cs</h2>
             <div className="in-short">
-              {report.fourc.slide.centre} Customer view{" "}
-              {report.customer_view.status.replace("_", " ")} on{" "}
+              {report.fourc.insight.primary_tension || report.fourc.slide.centre}{" "}
+              Customer view {report.customer_view.status.replace("_", " ")} on{" "}
               {report.customer_view.date}.
             </div>
             <div className="venn" data-testid="fourc-venn">
@@ -213,6 +213,28 @@ export function ReportShell({ report }: { report: ReportDocument }) {
             >
               <strong>Centre insight.</strong> {report.fourc.slide.centre}
             </div>
+            <div
+              data-testid="fourc-insight"
+              style={{
+                marginTop: 12,
+                padding: "0.9rem 1rem",
+                background: "#fff",
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+              }}
+            >
+              <p style={{ margin: 0 }}>
+                <strong>Offer name.</strong> {report.fourc.insight.name}
+              </p>
+              <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.1rem" }}>
+                {report.fourc.insight.tiers.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ol>
+              <p style={{ margin: "0.65rem 0 0", fontSize: 13, color: "var(--ink-soft)" }}>
+                Pressure test — credibility: {report.fourc.insight.pressure_test.credibility}
+              </p>
+            </div>
             <details style={{ marginTop: 12 }}>
               <summary>See the evidence</summary>
               <ul>
@@ -222,6 +244,15 @@ export function ReportShell({ report }: { report: ReportDocument }) {
                   </li>
                 ))}
               </ul>
+              {report.fourc.steps ? (
+                <ul>
+                  {Object.entries(report.fourc.steps).map(([k, v]) => (
+                    <li key={k}>
+                      <strong>{k}</strong>: {v}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </details>
           </section>
 

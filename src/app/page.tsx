@@ -26,7 +26,7 @@ export default async function Home() {
           margin: 0,
         }}
       >
-        Cranial · Phase 1 MVP
+        Cranial · Phase 2 · 4C and dashboard
       </p>
       <h1
         style={{
@@ -39,8 +39,9 @@ export default async function Home() {
         Be.Sci website audit
       </h1>
       <p style={{ maxWidth: "40rem", color: "#3a4a55", fontSize: "1.1rem" }}>
-        Expert-in-the-loop: intake → GA4 → capture → Creative Score → COM-B draft →
-        expert sign-off → private publish. Nothing client-visible without sign-off.
+        Intake → GA4 → full 4C (flag-once if needed) → live dashboard → capture →
+        COM-B draft → expert sign-off → private publish. Nothing client-visible
+        without sign-off.
       </p>
 
       <nav

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AuditStatus, StageRecord } from "@/lib/audit/types";
@@ -27,7 +28,7 @@ export function RunPipelinePanel({
 
   async function run() {
     setBusy(true);
-    setMessage("Running capture → Creative Score → COM-B…");
+    setMessage("Running 4C → capture → Creative Score → (diagnosis if validated)…");
     try {
       const res = await fetch(`/api/audits/${auditId}/run`, { method: "POST" });
       const data = await res.json();
@@ -81,8 +82,11 @@ export function RunPipelinePanel({
           cursor: busy || !hasIntake ? "not-allowed" : "pointer",
         }}
       >
-        {busy ? "Running…" : "Run tier-1 pipeline"}
+        {busy ? "Running…" : "Run Phase 2 pipeline"}
       </button>
+      <p style={{ margin: 0, fontSize: 14 }}>
+        <Link href={`/dashboard/${auditId}`}>Open live client dashboard</Link>
+      </p>
       {message ? <p style={{ margin: 0 }}>{message}</p> : null}
     </div>
   );

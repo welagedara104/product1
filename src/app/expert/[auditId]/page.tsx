@@ -4,8 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAudit } from "@/lib/audit/store";
 import { EXPERT_AUTH_COOKIE, verifyExpertToken } from "@/lib/expert/auth";
 import { ExpertActions } from "./ExpertActions";
-
-
+import { ExpertFlagPanel } from "./ExpertFlagPanel";
 
 export const instant = false;
 type Props = { params: Promise<{ auditId: string }> };
@@ -48,7 +47,8 @@ export default async function ExpertAuditPage({ params }: Props) {
         {job.intake?.business_name ?? auditId}
       </h1>
       <p style={{ color: "#3a4a55", maxWidth: "42rem" }}>
-        Status <strong>{job.status}</strong> · tier {job.tier} · inferred scores left:{" "}
+        Status <strong>{job.status}</strong> · tier {job.tier} · customer view:{" "}
+        <strong>{job.customer_view_status}</strong> · inferred scores left:{" "}
         <strong>{inferredCount}</strong>
         {job.draft_report ? (
           <>
@@ -58,10 +58,24 @@ export default async function ExpertAuditPage({ params }: Props) {
         ) : null}
       </p>
 
+      <ExpertFlagPanel
+        auditId={auditId}
+        flag={job.flag}
+        fourc={job.fourc_research}
+        customerViewSummary={
+          job.customer_view_summary || job.intake?.customer_opinion || null
+        }
+      />
+
       {!job.draft_report ? (
-        <p>
-          No draft yet.{" "}
-          <Link href={`/intake/${auditId}/run`}>Run the pipeline</Link> first.
+        <p style={{ marginTop: "1.25rem" }}>
+          No draft yet
+          {job.flag && job.flag.status !== "resolved"
+            ? " — resolve the 4C flag first (capture may already be done)."
+            : "."}{" "}
+          <Link href={`/intake/${auditId}/run`}>Pipeline</Link>
+          {" · "}
+          <Link href={`/dashboard/${auditId}`}>Client dashboard</Link>
         </p>
       ) : (
         <>
@@ -82,7 +96,9 @@ export default async function ExpertAuditPage({ params }: Props) {
             </ul>
             <p style={{ fontSize: 14, color: "#3a4a55" }}>
               Captures: {job.captures.length} · Creative Score frames:{" "}
-              {job.creative_scores.length} · GA4: {job.ga4?.mode ?? "none"}
+              {job.creative_scores.length} · GA4: {job.ga4?.mode ?? "none"} · 4C
+              steps 5–6:{" "}
+              {job.fourc_research?.steps_5_to_6.length ? "yes" : "no"}
             </p>
             {job.ga4?.note ? (
               <p style={{ fontSize: 13, color: "#3a4a55" }}>{job.ga4.note}</p>
@@ -103,6 +119,8 @@ export default async function ExpertAuditPage({ params }: Props) {
         <Link href="/expert">All audits</Link>
         {" · "}
         <Link href={`/intake/${auditId}/run`}>Pipeline</Link>
+        {" · "}
+        <Link href={`/dashboard/${auditId}`}>Client dashboard</Link>
       </p>
     </main>
   );

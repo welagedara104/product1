@@ -137,6 +137,10 @@ export function IntakeForm({ auditId, initial }: Props) {
           onChange={(e) => set("customer_opinion", e.target.value)}
           style={{ ...input, minHeight: 88 }}
         />
+        <span style={{ fontSize: 12, color: "#5a6a75" }}>
+          Demo tip: put <code>FORCE_FLAG</code> in this answer to try the
+          flag-once path (dashboard card + stub email).
+        </span>
       </Field>
       <Field label="Why do visitors not book? (up to three reasons) *">
         <textarea

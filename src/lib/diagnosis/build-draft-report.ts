@@ -5,16 +5,26 @@ import type {
   CreativeScoreResult,
   IntakeAnswers,
 } from "@/lib/audit/types";
+import { fourCResearchToChapter } from "@/lib/fourc/agent";
+import { customerViewApproachLine } from "@/lib/fourc/validate";
 import { ga4FixtureSummary } from "@/lib/ga4/fixture";
 import type { PageData, ReportDocument, Section } from "@/lib/report/types";
 
 /**
- * COM-B diagnosis + writing pipeline (Phase 1).
- * Fills the Phase 0 report model with inferred scores.
+ * COM-B diagnosis + writing pipeline.
+ * Uses completed 4C Steps 5–6 for the report chapter when present.
  * Expert workspace must promote every score before publish.
  */
 export function buildDraftReport(job: AuditJob): ReportDocument {
   if (!job.intake) throw new Error("Intake required before diagnosis");
+  if (
+    job.customer_view_status !== "validated" &&
+    job.customer_view_status !== "expert_verified"
+  ) {
+    throw new Error(
+      "Diagnosis waits until customer view is validated or expert-verified",
+    );
+  }
   const intake = job.intake;
   const now = new Date().toISOString();
   const buildSha = createHash("sha256")
@@ -24,6 +34,7 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
         intake,
         captures: job.captures,
         cs: job.creative_scores,
+        fourc: job.fourc_research?.completed_at,
         at: now,
       }),
     )
@@ -32,6 +43,89 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
 
   const pages = buildPages(intake, job.captures, job.creative_scores);
   const ga = ga4FixtureSummary(intake.business_name);
+  const cvSummary =
+    job.customer_view_summary || intake.customer_opinion;
+  const cvStatus =
+    job.customer_view_status === "expert_verified"
+      ? ("expert_verified" as const)
+      : ("validated" as const);
+
+  const fourc =
+    job.fourc_research && job.fourc_research.steps_5_to_6.length > 0
+      ? fourCResearchToChapter(job.fourc_research, "draft")
+      : fourCResearchToChapter(
+          {
+            mode: "fixture",
+            scenario: "validated",
+            steps_1_to_4: [],
+            review: null,
+            validation: job.fourc_research?.validation ?? [],
+            validated: true,
+            steps_5_to_6: [],
+            completed_at: now,
+          },
+          "draft",
+        );
+
+  // Fallback slide if synthesis somehow missing (should not happen after runDependentStages).
+  if (!job.fourc_research?.steps_5_to_6.length) {
+    fourc.slide = {
+      title: "Make the stay feel settled before they compare",
+      themes: {
+        company: intake.difference.slice(0, 80),
+        customer: cvSummary.slice(0, 80),
+        category: intake.competitors.slice(0, 80),
+        culture: intake.market,
+      },
+      points: {
+        company: [intake.what_you_sell, intake.difference],
+        customer: [cvSummary, intake.why_not_book],
+        category: intake.competitors
+          .split(/[,;\n]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 3),
+        culture: [intake.market, "Plan once, hate surprises"],
+      },
+      collisions: {
+        "company×customer": "Site story vs what guests say stops them booking.",
+        "company×category": "Competitors named in intake set the comparison set.",
+        "company×culture": "Market expectations shape trust cues.",
+        "customer×category": "Guests leave when totals stay unclear.",
+        "customer×culture": "They will pay fair if the path feels safe.",
+        "category×culture": "Clarity beats flash offers in this market.",
+      },
+      centre: "Show the stay, the total and a short safe checkout.",
+    };
+    fourc.insight = {
+      customer_insight: cvSummary,
+      category_movement: `Buyers also consider: ${intake.competitors}`,
+      primary_tension: intake.why_not_book,
+      tiers: [
+        "See the stay clearly on Home",
+        "Pick with price and cancellation together",
+        "Finish booking without a payment scare",
+      ],
+      name: "Stay settled",
+      name_options: ["Stay settled", "Clear path", "Book with certainty"],
+      pressure_test: {
+        credibility: "Needs real photos of the stay, not empty rooms.",
+        revenue_model: "Direct perks must stay visible next to rate.",
+        parity: "Totals must match what OTAs show earlier.",
+        evidence: "Draft; expert confirms before publish.",
+      },
+      client_decisions: [
+        intake.goal_detail,
+        "Confirm page list and booking stop before payment.",
+      ],
+    };
+    fourc.validation =
+      job.fourc_research?.validation.map((v) => ({
+        check: v.check,
+        result: v.result,
+        evidence: v.evidence,
+      })) ?? fourc.validation;
+  }
 
   const report: ReportDocument = {
     report_id: `rpt_${job.audit_id}`,
@@ -42,89 +136,24 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
     tier: job.tier,
     o1: goalLabel(intake),
     customer_view: {
-      status: "validated",
+      status: cvStatus,
       date: now.slice(0, 10),
-      summary: intake.customer_opinion,
+      summary: cvSummary,
+      flag: job.flag
+        ? {
+            raised_at: job.flag.raised_at,
+            client_notified: {
+              dashboard: job.flag.client_notified.dashboard,
+              email_sent_at:
+                job.flag.client_notified.email_sent_at ?? undefined,
+            },
+            client_response_at: job.flag.client_response?.at,
+            resolved_by: job.flag.resolution?.by,
+            resolution: job.flag.resolution?.kind,
+          }
+        : undefined,
     },
-    fourc: {
-      validation: [
-        {
-          check: "who",
-          result: "pass",
-          evidence: intake.customer_opinion.slice(0, 180),
-        },
-        {
-          check: "why_buy",
-          result: "partial",
-          evidence: intake.difference.slice(0, 180),
-        },
-        {
-          check: "why_not",
-          result: "partial",
-          evidence: intake.why_not_book.slice(0, 180),
-        },
-        {
-          check: "contradiction",
-          result: "pass",
-          evidence: "Phase 1 skips full 4C agent; expert verifies in workspace.",
-        },
-        {
-          check: "evidence_floor",
-          result: job.tier >= 1 ? "pass" : "insufficient_evidence",
-          evidence:
-            job.tier >= 1
-              ? "GA4 fixture/OAuth present (tier 1)."
-              : "No GA4; qualitative only.",
-        },
-      ],
-      slide: {
-        title: "Make the stay feel settled before they compare",
-        themes: {
-          company: intake.difference.slice(0, 80),
-          customer: intake.customer_opinion.slice(0, 80),
-          category: intake.competitors.slice(0, 80),
-          culture: intake.market,
-        },
-        points: {
-          company: [intake.what_you_sell, intake.difference],
-          customer: [intake.customer_opinion, intake.why_not_book],
-          category: intake.competitors.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 3),
-          culture: [intake.market, "Plan once, hate surprises"],
-        },
-        collisions: {
-          "company×customer": "Site story vs what guests say stops them booking.",
-          "company×category": "Competitors named in intake set the comparison set.",
-          "company×culture": "Market expectations shape trust cues.",
-          "customer×category": "Guests leave when totals stay unclear.",
-          "customer×culture": "They will pay fair if the path feels safe.",
-          "category×culture": "Clarity beats flash offers in this market.",
-        },
-        centre: "Show the stay, the total and a short safe checkout.",
-      },
-      insight: {
-        customer_insight: intake.customer_opinion,
-        category_movement: `Buyers also consider: ${intake.competitors}`,
-        primary_tension: intake.why_not_book,
-        tiers: [
-          "See the stay clearly on Home",
-          "Pick with price and cancellation together",
-          "Finish booking without a payment scare",
-        ],
-        name: "Stay settled",
-        name_options: ["Stay settled", "Clear path", "Book with certainty"],
-        pressure_test: {
-          credibility: "Needs real photos of the stay, not empty rooms.",
-          revenue_model: "Direct perks must stay visible next to rate.",
-          parity: "Totals must match what OTAs show earlier.",
-          evidence: "Phase 1 draft; expert confirms before publish.",
-        },
-        client_decisions: [
-          intake.goal_detail,
-          "Confirm page list and booking stop before payment.",
-        ],
-      },
-      review_state: "draft",
-    },
+    fourc,
     signoff: null,
     units: Object.keys(pages).map((slug, i) => ({
       slug,
@@ -210,6 +239,7 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
     },
     chapters: [
       { id: "exec", title: "What we found, in brief", read_min: 3 },
+      { id: "fourc", title: "Your customer: the four Cs", read_min: 4 },
       { id: "approach", title: "Approach", read_min: 4 },
       { id: "arrival", title: "Arrival pages", read_min: 8 },
       { id: "booking", title: "Booking path", read_min: 6 },
@@ -223,18 +253,23 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
       ...(job.creative_scores.some((c) => c.mode === "fixture")
         ? ["Creative Score used fixture scores (API key not configured)."]
         : []),
-      "Full 4C agent deferred to Phase 2; customer view taken from intake.",
+      ...(job.fourc_research?.mode === "fixture"
+        ? ["4C research used the fixture agent (no live web research in this build)."]
+        : []),
       "ContentSquare deferred to Phase 3.",
     ],
     sources_method: [
+      "4C Steps 1–6 + AI-mistake review (fixture agent in Phase 2)",
       "COM-B section ratings (Capability, Opportunity, Motivation) 0–4",
       "Capture at 1440×900 and 390×844; stop before payment",
       "Creative Score attention axes per frame",
       job.tier >= 1 ? "GA4 landing and funnel figures (fixture or OAuth)" : "No GA4",
     ],
     approach: {
-      in_short:
-        "We captured the site, scored attention, read the intake (and GA when present), then rated each section with COM-B. An expert must review every score before anything goes to the client.",
+      in_short: `${customerViewApproachLine({
+        status: cvStatus,
+        date: now.slice(0, 10),
+      })} We captured the site, scored attention, read analytics when present, then rated each section with COM-B. An expert must review every score before anything goes to the client.`,
       comb_terms: [
         {
           term: "Capability",

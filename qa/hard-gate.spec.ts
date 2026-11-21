@@ -54,6 +54,11 @@ function baseJob(): AuditJob {
     overrides: [],
     signoff: null,
     assigned_expert_id: null,
+    fourc_research: null,
+    flag: null,
+    customer_view_summary: "Couples who need clarity",
+    customer_view_status: "validated",
+    email_log: [],
     publish_attempts: [],
   };
 }

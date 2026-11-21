@@ -41,6 +41,11 @@ export function createEmptyAudit(auditId = newAuditId()): AuditJob {
     overrides: [],
     signoff: null,
     assigned_expert_id: null,
+    fourc_research: null,
+    flag: null,
+    customer_view_summary: null,
+    customer_view_status: "pending",
+    email_log: [],
     publish_attempts: [],
   };
 }

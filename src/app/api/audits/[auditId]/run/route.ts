@@ -13,6 +13,11 @@ export async function POST(req: Request, ctx: Ctx) {
 
   try {
     const job = await runPipeline(auditId, baseUrl);
+    const flagged =
+      job.status === "flagged" ||
+      job.status === "awaiting_client" ||
+      job.status === "awaiting_expert";
+
     return NextResponse.json({
       audit_id: job.audit_id,
       status: job.status,
@@ -20,9 +25,13 @@ export async function POST(req: Request, ctx: Ctx) {
       captures: job.captures.length,
       creative_scores: job.creative_scores.length,
       draft_report_id: job.draft_report?.report_id ?? null,
-      message:
-        job.status === "in_expert_review"
-          ? "Draft ready. Open the expert workspace to review and sign off."
+      customer_view_status: job.customer_view_status,
+      flag_status: job.flag?.status ?? null,
+      dashboard_path: `/dashboard/${job.audit_id}`,
+      message: flagged
+        ? "Customer view flagged once. Capture kept running. Open the dashboard (and expert workspace to approve wording)."
+        : job.status === "in_expert_review"
+          ? "Draft ready (incl. 4C chapter). Open the expert workspace to review and sign off."
           : `Pipeline ended in status: ${job.status}`,
     });
   } catch (e) {

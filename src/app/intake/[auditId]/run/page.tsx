@@ -35,9 +35,10 @@ export default async function RunPage({ params }: Props) {
         Run the audit
       </h1>
       <p style={{ maxWidth: "40rem", color: "#3a4a55" }}>
-        This runs capture (1440 + 390, stop before payment), Creative Score, then COM-B
-        diagnosis into a draft report. Draft scores stay internal until an expert signs
-        off.
+        This runs 4C Steps 1–4 + review, then capture and Creative Score. If the
+        customer view fails validation, diagnosis waits while you answer on the
+        dashboard. Steps 5–6 and COM-B only run after a validated or expert-verified
+        view. Draft scores stay internal until an expert signs off.
       </p>
       <RunPipelinePanel
         auditId={auditId}

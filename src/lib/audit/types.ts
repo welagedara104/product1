@@ -4,6 +4,11 @@ import {
   ReportDocumentSchema,
   SignoffSchema,
 } from "@/lib/report/types";
+import {
+  EmailStubSchema,
+  FlagRecordSchema,
+  FourCResearchSchema,
+} from "@/lib/fourc/types";
 
 /** Roles — only expert can sign off or publish (brief §19 / §20.4). */
 export const RoleSchema = z.enum(["client", "expert", "operator", "admin"]);
@@ -12,8 +17,13 @@ export type Role = z.infer<typeof RoleSchema>;
 export const StageIdSchema = z.enum([
   "intake",
   "ga4_connect",
+  "fourc_research",
+  "fourc_flag",
+  "fourc_verify",
+  "fourc_synthesis",
   "capture",
   "creative_score",
+  "analytics",
   "diagnosis",
   "writing",
   "expert_review",
@@ -36,6 +46,9 @@ export const AuditStatusSchema = z.enum([
   "intake",
   "ready_to_run",
   "running",
+  "flagged",
+  "awaiting_client",
+  "awaiting_expert",
   "in_expert_review",
   "signed_off",
   "published",
@@ -150,6 +163,16 @@ export const AuditJobSchema = z.object({
   overrides: z.array(ExpertOverrideSchema).default([]),
   signoff: SignoffSchema.nullable(),
   assigned_expert_id: z.string().nullable(),
+  /** Full 4C research artefact (Phase 2). */
+  fourc_research: FourCResearchSchema.nullable().default(null),
+  /** Flag-once record; null until first (and only) raise. */
+  flag: FlagRecordSchema.nullable().default(null),
+  /** Confirmed customer view used by Steps 5–6 and diagnosis. */
+  customer_view_summary: z.string().nullable().default(null),
+  customer_view_status: z
+    .enum(["pending", "validated", "expert_verified"])
+    .default("pending"),
+  email_log: z.array(EmailStubSchema).default([]),
   publish_attempts: z
     .array(
       z.object({
@@ -163,16 +186,38 @@ export const AuditJobSchema = z.object({
 });
 export type AuditJob = z.infer<typeof AuditJobSchema>;
 
+/**
+ * Pipeline order for stage records.
+ * Independent during flag: capture, creative_score, analytics.
+ * Dependent (wait on flag): fourc_synthesis, diagnosis, writing.
+ */
 export const STAGE_ORDER: StageId[] = [
   "intake",
   "ga4_connect",
+  "fourc_research",
+  "fourc_flag",
+  "fourc_verify",
   "capture",
   "creative_score",
+  "analytics",
+  "fourc_synthesis",
   "diagnosis",
   "writing",
   "expert_review",
   "signoff",
   "publish",
+];
+
+export const INDEPENDENT_DURING_FLAG: StageId[] = [
+  "capture",
+  "creative_score",
+  "analytics",
+];
+
+export const DEPENDENT_ON_CUSTOMER_VIEW: StageId[] = [
+  "fourc_synthesis",
+  "diagnosis",
+  "writing",
 ];
 
 export function emptyStages(): StageRecord[] {

@@ -1,8 +1,11 @@
 import Link from "next/link";
-import { listFixtureReports } from "@/lib/report/registry";
+import { listAllClientReports } from "@/lib/report/registry";
 
-export default function Home() {
-  const fixtures = listFixtureReports();
+
+
+export const instant = false;
+export default async function Home() {
+  const reports = await listAllClientReports();
 
   return (
     <main
@@ -23,28 +26,47 @@ export default function Home() {
           margin: 0,
         }}
       >
-        Cranial · Phase 0 foundations
+        Cranial · Phase 1 MVP
       </p>
       <h1
         style={{
           fontFamily: "var(--font-report-display), Georgia, serif",
           fontSize: "clamp(2.2rem, 5vw, 3.4rem)",
           margin: "0.4rem 0 0.75rem",
-          maxWidth: "16ch",
+          maxWidth: "18ch",
         }}
       >
         Be.Sci website audit
       </h1>
       <p style={{ maxWidth: "40rem", color: "#3a4a55", fontSize: "1.1rem" }}>
-        Report data model, Velifushi-inspired renderer on an anonymised fixture, QA at
-        three widths, and private noindex hosting.
+        Expert-in-the-loop: intake → GA4 → capture → Creative Score → COM-B draft →
+        expert sign-off → private publish. Nothing client-visible without sign-off.
       </p>
 
-      <section style={{ marginTop: "2rem" }}>
-        <h2 style={{ fontSize: "1.1rem" }}>Fixture reports (password gated)</h2>
+      <nav
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 10,
+          marginTop: "1.5rem",
+        }}
+      >
+        <Link href="/intake" style={cta}>
+          Start client intake
+        </Link>
+        <Link href="/expert" style={ctaSecondary}>
+          Expert workspace
+        </Link>
+        <Link href="/demo-site" style={ctaSecondary}>
+          Demo site (capture target)
+        </Link>
+      </nav>
+
+      <section style={{ marginTop: "2.5rem" }}>
+        <h2 style={{ fontSize: "1.1rem" }}>Client-visible reports (password gated)</h2>
         <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 10 }}>
-          {fixtures.map((f) => (
-            <li key={f.report_id}>
+          {reports.map((f) => (
+            <li key={`${f.source}-${f.report_id}`}>
               <Link
                 href={`/report/${f.report_id}`}
                 style={{
@@ -59,17 +81,32 @@ export default function Home() {
               >
                 <strong>{f.client}</strong>
                 <div style={{ fontSize: 13, color: "#3a4a55" }}>
-                  {f.report_id} · tier {f.tier}
+                  {f.report_id} · tier {f.tier} · {f.source}
                 </div>
               </Link>
             </li>
           ))}
         </ul>
         <p style={{ fontSize: 13, color: "#3a4a55" }}>
-          Local default password: <code>phase0-fixture</code> (override with{" "}
-          <code>REPORT_ACCESS_PASSWORD</code>).
+          Report password: <code>phase0-fixture</code> · Expert password:{" "}
+          <code>phase1-expert</code>
         </p>
       </section>
     </main>
   );
 }
+
+const cta = {
+  display: "inline-block",
+  background: "#0b3a4a",
+  color: "#f4efe6",
+  padding: "0.75rem 1.1rem",
+  textDecoration: "none",
+  fontWeight: 600,
+} as const;
+const ctaSecondary = {
+  ...cta,
+  background: "#fff",
+  color: "#0b3a4a",
+  border: "1px solid #0b3a4a",
+} as const;

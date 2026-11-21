@@ -4,13 +4,14 @@ import { notFound } from "next/navigation";
 import { ReportShell } from "@/components/report/ReportShell";
 import { getPublishableReport } from "@/lib/report/registry";
 
-export const instant = false;
 
+
+export const instant = false;
 type Props = { params: Promise<{ reportId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { reportId } = await params;
-  const { report } = getPublishableReport(decodeURIComponent(reportId));
+  const { report } = await getPublishableReport(decodeURIComponent(reportId));
   return {
     title: report
       ? `${report.client.name} · Cranial Be.Sci audit`
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function ReportBody({ params }: Props) {
   const { reportId } = await params;
-  const { report, errors } = getPublishableReport(decodeURIComponent(reportId));
+  const { report, errors } = await getPublishableReport(decodeURIComponent(reportId));
   if (!report) {
     if (errors.includes("Report not found")) notFound();
     return (

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing reportId" }, { status: 400 });
   }
 
-  const { report, errors } = getPublishableReport(reportId);
+  const { report, errors } = await getPublishableReport(reportId);
   if (!report) {
     return NextResponse.json(
       { error: "Report unavailable", details: errors },

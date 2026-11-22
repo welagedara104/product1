@@ -63,7 +63,8 @@ export default async function ExpertAuditPage({ params }: Props) {
         flag={job.flag}
         fourc={job.fourc_research}
         customerViewSummary={
-          job.customer_view_summary || job.intake?.customer_opinion || null
+          job.customer_view_summary ||
+            (job.intake ? job.intake.buy_elsewhere : null)
         }
       />
 

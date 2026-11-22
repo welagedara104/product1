@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { sampleIntakePayload } from "./fixtures/sample-intake";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1440", "run once");
@@ -22,24 +23,7 @@ test.describe("Phase 1 tier-1 expert loop", () => {
 
     // 2. Intake
     const intake = await api.post(`/api/audits/${audit_id}/intake`, {
-      data: {
-        business_name: "Coral Reach Resort",
-        website_url: "https://example.com",
-        market: "UK and EU",
-        what_you_sell: "Lagoon stays for couples",
-        difference: "Clear evenings and totals",
-        goal_o1: "direct_bookings",
-        goal_detail: "Raise direct share",
-        customer_opinion: "Couples who need the stay to feel settled",
-        why_not_book: "Totals unclear; long checkout",
-        competitors: "OTA A, Lagoon B",
-        pages: "/demo-site\n/demo-site/book",
-        devices: "both",
-        report_recipients: "owner@example.com",
-        consent: true,
-        ga4_status: "yes_connect",
-        capture_ok_to_payment: true,
-      },
+      data: sampleIntakePayload,
     });
     expect(intake.ok()).toBeTruthy();
 

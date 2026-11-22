@@ -5,6 +5,11 @@ import {
   writePublishedReport,
 } from "@/lib/audit/publisher";
 import { assertExpert } from "@/lib/audit/roles";
+import {
+  intakeCustomerView,
+  intakeEmailRecipients,
+  intakeWantsGa4,
+} from "@/lib/audit/intake-fields";
 import { getAudit, saveAudit } from "@/lib/audit/store";
 import type {
   AuditJob,
@@ -22,7 +27,6 @@ import {
   runFourCSynthesis,
 } from "@/lib/fourc/agent";
 import {
-  parseRecipients,
   sendAuditStartedEmail,
   sendFlagRaisedEmail,
   sendFlagResolvedEmail,
@@ -157,7 +161,7 @@ async function runDependentStages(job: AuditJob): Promise<AuditJob> {
   }
 
   const summary =
-    job.customer_view_summary || intake.customer_opinion;
+    job.customer_view_summary || intakeCustomerView(intake);
 
   // --- 4C Steps 5–6 ---
   job.stages = patchStage(job.stages, "fourc_synthesis", {
@@ -276,7 +280,7 @@ export async function runPipeline(
   job.status = "running";
   job = await saveAudit(job);
 
-  const recipients = parseRecipients(intake.report_recipients);
+  const recipients = intakeEmailRecipients(intake);
   const started = await sendAuditStartedEmail({
     auditId: job.audit_id,
     recipients,
@@ -294,7 +298,7 @@ export async function runPipeline(
   job = await saveAudit(job);
 
   if (!job.ga4) {
-    if (ga4OAuthConfigured() && intake.ga4_status === "yes_connect") {
+    if (ga4OAuthConfigured() && intakeWantsGa4(intake)) {
       job.ga4 = connectGa4Fixture(intake);
       job.stages = logStage(
         job.stages,
@@ -341,7 +345,7 @@ export async function runPipeline(
 
   if (validated) {
     job.customer_view_status = "validated";
-    job.customer_view_summary = intake.customer_opinion;
+    job.customer_view_summary = intakeCustomerView(intake);
     job.stages = patchStage(job.stages, "fourc_flag", {
       status: "skipped",
       finished_at: new Date().toISOString(),
@@ -431,7 +435,9 @@ export async function approveFlagWording(
     client_notified: { dashboard: true, email_sent_at: null },
   };
 
-  const recipients = parseRecipients(job.intake?.report_recipients ?? "");
+  const recipients = job.intake
+    ? intakeEmailRecipients(job.intake)
+    : ["team@cranial.local"];
   const email = await sendFlagRaisedEmail({
     auditId: job.audit_id,
     recipients,
@@ -559,7 +565,9 @@ export async function resolveFlag(
     });
   }
 
-  const recipients = parseRecipients(job.intake?.report_recipients ?? "");
+  const recipients = job.intake
+    ? intakeEmailRecipients(job.intake)
+    : ["team@cranial.local"];
   const email = await sendFlagResolvedEmail({
     auditId: job.audit_id,
     recipients,

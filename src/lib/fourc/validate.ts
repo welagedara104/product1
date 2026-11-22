@@ -1,3 +1,9 @@
+import {
+  intakeCustomerView,
+  intakeDifference,
+  intakeForceFlagBlob,
+  intakeWhyNot,
+} from "@/lib/audit/intake-fields";
 import type { IntakeAnswers } from "@/lib/audit/types";
 import type { FourCStepOutput, ValidationCheck } from "@/lib/fourc/types";
 
@@ -40,14 +46,7 @@ export function evaluateValidation(
 
 /** Detect demo force-flag from intake (fixtures OK where APIs missing). */
 export function detectForceFlag(intake: IntakeAnswers): boolean {
-  const blob = [
-    intake.customer_opinion,
-    intake.why_not_book,
-    intake.difference,
-  ]
-    .join(" ")
-    .toUpperCase();
-  return blob.includes("FORCE_FLAG");
+  return intakeForceFlagBlob(intake).toUpperCase().includes("FORCE_FLAG");
 }
 
 export function buildValidationChecks(args: {
@@ -73,14 +72,14 @@ export function buildValidationChecks(args: {
       {
         check: "why_buy",
         result: "partial",
-        evidence: `Client difference: ${intake.difference.slice(0, 120)}`,
+        evidence: `Client difference: ${intakeDifference(intake).slice(0, 120)}`,
         plain_words:
           "One of your reasons to buy looks fair, but we want to check it against outside evidence.",
       },
       {
         check: "why_not",
         result: "partial",
-        evidence: intake.why_not_book.slice(0, 160),
+        evidence: intakeWhyNot(intake).slice(0, 160),
         plain_words:
           "Your reasons for not booking are not clearly contradicted, but need a closer look.",
       },
@@ -105,7 +104,7 @@ export function buildValidationChecks(args: {
       check: "who",
       result: args.shortlistIncludesClient ? "pass" : "fail",
       evidence: args.shortlistIncludesClient
-        ? `Client view matches shortlist segment 1: ${intake.customer_opinion.slice(0, 120)}`
+        ? `Client view matches shortlist segment 1: ${intakeCustomerView(intake).slice(0, 120)}`
         : "Client best-fit customer not in Step 2 shortlist top 2.",
       plain_words: args.shortlistIncludesClient
         ? "Your view of who books matches the outside evidence shortlist."
@@ -116,7 +115,7 @@ export function buildValidationChecks(args: {
       result: args.step1SupportedReasons >= 1 ? "pass" : "fail",
       evidence:
         args.step1SupportedReasons >= 1
-          ? `At least one top reason survives the ladder test (${intake.difference.slice(0, 100)}).`
+          ? `At least one top reason survives the ladder test (${intakeDifference(intake).slice(0, 100)}).`
           : "No supported or fair-inference reason survived the rival test.",
       plain_words:
         args.step1SupportedReasons >= 1
@@ -126,7 +125,7 @@ export function buildValidationChecks(args: {
     {
       check: "why_not",
       result: "partial",
-      evidence: `Client why-not: ${intake.why_not_book.slice(0, 160)}`,
+      evidence: `Client why-not: ${intakeWhyNot(intake).slice(0, 160)}`,
       plain_words:
         "Your reasons for not booking are treated as a working hypothesis (partial).",
     },

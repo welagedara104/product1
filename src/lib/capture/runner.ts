@@ -1,6 +1,7 @@
 import { chromium, type Browser } from "playwright";
 import { promises as fs } from "fs";
 import path from "path";
+import { DEFAULT_CAPTURE_PAGES } from "@/lib/audit/intake-fields";
 import type { CaptureFrame, IntakeAnswers } from "@/lib/audit/types";
 
 const CAPTURE_ROOT = path.join(process.cwd(), ".data", "captures");
@@ -26,7 +27,7 @@ export async function runCapture(opts: {
   await fs.mkdir(outDir, { recursive: true });
 
   const pageIds = parsePageIds(intake);
-  const devices = devicesFor(intake.devices);
+  const devices = devicesFor("both");
   const frames: CaptureFrame[] = [];
   const useHttp = process.env.CAPTURE_TARGET === "http";
 
@@ -97,15 +98,14 @@ export async function runCapture(opts: {
   return frames;
 }
 
-function devicesFor(mode: IntakeAnswers["devices"]): Array<"d" | "m"> {
+function devicesFor(mode: "both" | "desktop" | "mobile"): Array<"d" | "m"> {
   if (mode === "desktop") return ["d"];
   if (mode === "mobile") return ["m"];
   return ["d", "m"];
 }
 
-function parsePageIds(intake: IntakeAnswers): string[] {
-  const lines = intake.pages
-    .split(/[\n,]+/)
+function parsePageIds(_intake: IntakeAnswers): string[] {
+  const lines = DEFAULT_CAPTURE_PAGES.split(/[\n,]+/)
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
   const ids = new Set<string>(["home"]);

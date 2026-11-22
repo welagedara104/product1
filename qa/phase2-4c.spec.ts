@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import {
+  forceFlagIntakePayload,
+  sampleIntakePayload,
+} from "./fixtures/sample-intake";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1440", "run once");
@@ -7,23 +11,7 @@ test.beforeEach(({}, testInfo) => {
 const EXPERT_PASSWORD = process.env.EXPERT_ACCESS_PASSWORD || "phase1-expert";
 const REPORT_PASSWORD = process.env.REPORT_ACCESS_PASSWORD || "phase0-fixture";
 
-const baseIntake = {
-  business_name: "Coral Reach Resort",
-  website_url: "https://example.com",
-  market: "UK and EU",
-  what_you_sell: "Lagoon stays for couples",
-  difference: "Clear evenings and totals",
-  goal_o1: "direct_bookings",
-  goal_detail: "Raise direct share",
-  why_not_book: "Totals unclear; long checkout",
-  competitors: "OTA A, Lagoon B",
-  pages: "/demo-site\n/demo-site/book",
-  devices: "both",
-  report_recipients: "owner@example.com",
-  consent: true,
-  ga4_status: "yes_connect",
-  capture_ok_to_payment: true,
-};
+const baseIntake = sampleIntakePayload;
 
 test.describe("Phase 2 4C validated path", () => {
   test("4C validates → Steps 5–6 → dashboard → report has 4C chapter", async ({
@@ -35,11 +23,7 @@ test.describe("Phase 2 4C validated path", () => {
     const { audit_id } = await created.json();
 
     await api.post(`/api/audits/${audit_id}/intake`, {
-      data: {
-        ...baseIntake,
-        customer_opinion:
-          "Couples who need the stay to feel settled before they commit",
-      },
+      data: baseIntake,
     });
     await api.post(`/api/audits/${audit_id}/ga4`, { data: { mode: "fixture" } });
 
@@ -107,11 +91,7 @@ test.describe("Phase 2 flag-once path", () => {
     const { audit_id } = await created.json();
 
     await api.post(`/api/audits/${audit_id}/intake`, {
-      data: {
-        ...baseIntake,
-        customer_opinion:
-          "FORCE_FLAG: first-visit couples only, ignore repeat guests",
-      },
+      data: forceFlagIntakePayload,
     });
     await api.post(`/api/audits/${audit_id}/ga4`, { data: { mode: "fixture" } });
 

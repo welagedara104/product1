@@ -1,4 +1,14 @@
 import { createHash } from "crypto";
+import {
+  intakeCompetitors,
+  intakeCustomerView,
+  intakeDifference,
+  intakeGoalLabel,
+  intakeGoalShort,
+  intakeMarket,
+  intakeWhatYouSell,
+  intakeWhyNot,
+} from "@/lib/audit/intake-fields";
 import type {
   AuditJob,
   CaptureFrame,
@@ -43,8 +53,13 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
 
   const pages = buildPages(intake, job.captures, job.creative_scores);
   const ga = ga4FixtureSummary(intake.business_name);
+  const difference = intakeDifference(intake);
+  const competitors = intakeCompetitors(intake);
+  const whyNot = intakeWhyNot(intake);
+  const whatYouSell = intakeWhatYouSell(intake);
+  const market = intakeMarket(intake);
   const cvSummary =
-    job.customer_view_summary || intake.customer_opinion;
+    job.customer_view_summary || intakeCustomerView(intake);
   const cvStatus =
     job.customer_view_status === "expert_verified"
       ? ("expert_verified" as const)
@@ -72,20 +87,20 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
     fourc.slide = {
       title: "Make the stay feel settled before they compare",
       themes: {
-        company: intake.difference.slice(0, 80),
+        company: difference.slice(0, 80),
         customer: cvSummary.slice(0, 80),
-        category: intake.competitors.slice(0, 80),
-        culture: intake.market,
+        category: competitors.slice(0, 80),
+        culture: market,
       },
       points: {
-        company: [intake.what_you_sell, intake.difference],
-        customer: [cvSummary, intake.why_not_book],
-        category: intake.competitors
+        company: [whatYouSell, difference],
+        customer: [cvSummary, whyNot],
+        category: competitors
           .split(/[,;\n]/)
           .map((s) => s.trim())
           .filter(Boolean)
           .slice(0, 3),
-        culture: [intake.market, "Plan once, hate surprises"],
+        culture: [market, "Plan once, hate surprises"],
       },
       collisions: {
         "company×customer": "Site story vs what guests say stops them booking.",
@@ -99,8 +114,8 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
     };
     fourc.insight = {
       customer_insight: cvSummary,
-      category_movement: `Buyers also consider: ${intake.competitors}`,
-      primary_tension: intake.why_not_book,
+      category_movement: `Buyers also consider: ${competitors}`,
+      primary_tension: whyNot,
       tiers: [
         "See the stay clearly on Home",
         "Pick with price and cancellation together",
@@ -115,7 +130,7 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
         evidence: "Draft; expert confirms before publish.",
       },
       client_decisions: [
-        intake.goal_detail,
+        intakeGoalLabel(intake),
         "Confirm page list and booking stop before payment.",
       ],
     };
@@ -131,10 +146,10 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
     report_id: `rpt_${job.audit_id}`,
     client: {
       name: intake.business_name,
-      market: intake.market,
+      market,
     },
     tier: job.tier,
-    o1: goalLabel(intake),
+    o1: intakeGoalLabel(intake),
     customer_view: {
       status: cvStatus,
       date: now.slice(0, 10),
@@ -168,10 +183,10 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
     },
     pages,
     exec_summary: {
-      question: `Where is ${intake.business_name} losing ${goalShort(intake)}, and why?`,
+      question: `Where is ${intake.business_name} losing ${intakeGoalShort(intake)}, and why?`,
       key_findings: [
         {
-          text: `Guests say they stop because: ${intake.why_not_book}`,
+          text: `Guests say they stop because: ${whyNot}`,
           fn: ["intake-why-not"],
         },
         {
@@ -184,7 +199,7 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
       ],
       leads: [
         {
-          text: `Commercial goal (O1): ${goalLabel(intake)}.`,
+          text: `Commercial goal (O1): ${intakeGoalLabel(intake)}.`,
           fn: ["intake-o1"],
         },
       ],
@@ -226,7 +241,7 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
       },
       "intake-o1": {
         key: "intake-o1",
-        text: `Client intake: commercial goal ${goalLabel(intake)}.`,
+        text: `Client intake: commercial goal ${intakeGoalLabel(intake)}.`,
       },
       "ga-landing": {
         key: "ga-landing",
@@ -320,27 +335,6 @@ export function buildDraftReport(job: AuditJob): ReportDocument {
   };
 
   return report;
-}
-
-function goalLabel(intake: IntakeAnswers): string {
-  const map = {
-    direct_bookings: "Direct bookings",
-    enquiries: "Enquiries",
-    sales: "Sales",
-    sign_ups: "Sign-ups",
-    other: "Other goal",
-  } as const;
-  return `${map[intake.goal_o1]}: ${intake.goal_detail}`;
-}
-
-function goalShort(intake: IntakeAnswers): string {
-  return {
-    direct_bookings: "direct bookings",
-    enquiries: "enquiries",
-    sales: "sales",
-    sign_ups: "sign-ups",
-    other: "conversions",
-  }[intake.goal_o1];
 }
 
 function buildPages(

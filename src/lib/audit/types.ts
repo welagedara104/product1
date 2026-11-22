@@ -59,37 +59,63 @@ export type AuditStatus = z.infer<typeof AuditStatusSchema>;
 export const TierSchema = z.union([z.literal(0), z.literal(1), z.literal(2)]);
 export type Tier = z.infer<typeof TierSchema>;
 
-/** Minimal but real intake — required fields from brief §4, condensed for MVP. */
-export const IntakeAnswersSchema = z.object({
-  business_name: z.string().min(1),
-  website_url: z.string().url(),
-  market: z.string().min(1),
-  what_you_sell: z.string().min(1),
-  difference: z.string().min(1),
-  goal_o1: z.enum([
-    "direct_bookings",
-    "enquiries",
-    "sales",
-    "sign_ups",
-    "other",
-  ]),
-  goal_detail: z.string().min(1),
-  customer_opinion: z.string().min(1),
-  why_not_book: z.string().min(1),
-  competitors: z.string().min(1),
-  pages: z.string().min(1),
-  devices: z.enum(["both", "desktop", "mobile"]).default("both"),
-  report_recipients: z.string().min(1),
-  consent: z.literal(true),
-  ga4_status: z.enum([
-    "yes_connect",
-    "yes_colleague",
-    "no",
-    "not_sure",
-  ]),
-  booking_engine_url: z.string().optional(),
-  capture_ok_to_payment: z.boolean().default(true),
-});
+/**
+ * Locked intake (Kavinda walkthrough): 13 questions in 4 sections.
+ * Cranial team fills on behalf of the client — no consent / recipients.
+ */
+export const IntakeAnswersSchema = z
+  .object({
+    business_name: z.string().min(1),
+    website_url: z.string().url(),
+    difference_from_website: z.boolean(),
+    difference: z.string().default(""),
+    testimonials_from_website: z.boolean(),
+    testimonials: z.string().default(""),
+    field_intel: z.string().default(""),
+    website_goal: z.enum(["buy", "inquire", "other"]),
+    website_goal_other: z.string().default(""),
+    buy_elsewhere: z.string().min(1),
+    cool_competitor_sites: z.string().default(""),
+    wish_owned_sites: z.string().default(""),
+    analytics_tool: z.enum(["ga4", "other", "none"]),
+    analytics_other_name: z.string().default(""),
+    behaviour_tool: z.enum(["contentsquare", "other", "no"]),
+    behaviour_other_name: z.string().default(""),
+    booking_provider: z.string().default(""),
+    booking_engine_url: z.string().default(""),
+    booking_different_domain: z.enum(["yes", "no", "not_sure"]).default("not_sure"),
+    access_barriers: z.string().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.difference_from_website && !data.difference.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Type the difference, or tick that the website already gives it",
+        path: ["difference"],
+      });
+    }
+    if (data.website_goal === "other" && !data.website_goal_other.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Say what the website should mainly do",
+        path: ["website_goal_other"],
+      });
+    }
+    if (data.analytics_tool === "other" && !data.analytics_other_name.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Name the analytics provider",
+        path: ["analytics_other_name"],
+      });
+    }
+    if (data.behaviour_tool === "other" && !data.behaviour_other_name.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Name the behaviour tool",
+        path: ["behaviour_other_name"],
+      });
+    }
+  });
 export type IntakeAnswers = z.infer<typeof IntakeAnswersSchema>;
 
 export const Ga4ConnectionSchema = z.object({

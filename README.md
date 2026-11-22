@@ -16,7 +16,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 **Happy path (customer view validates)**
 
-1. **Start intake** → `/intake` (sample answers are pre-filled).
+1. **Start intake** → `/intake` (Cranial teammate fills on the client's behalf; four sections; sample answers available).
 2. **Connect GA4** → use **Use tier-1 GA4 fixture**.
 3. **Run pipeline** → 4C Steps 1–4 + review → validates → Steps 5–6 → capture → Creative Score → COM-B draft.
 4. **Live dashboard** → `/dashboard/[auditId]` — stages, ETAs, no draft scores.
@@ -25,7 +25,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 **Flag-once path**
 
-1. In intake, put `FORCE_FLAG` in “Who do you believe books…”.
+1. In intake (About section), put `FORCE_FLAG` in the internal field-intel answer.
 2. Run the pipeline → status becomes flagged; **capture / Creative Score / analytics still finish**.
 3. Dashboard shows a pending card; diagnosis waits.
 4. In `/expert/[auditId]`: **Approve wording + send stub email** (written under `.data/emails/`).

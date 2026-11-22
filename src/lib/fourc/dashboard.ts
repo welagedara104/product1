@@ -254,9 +254,7 @@ export function buildDashboard(job: AuditJob): {
     what_happens_next = "Open your private report when you are ready.";
   }
 
-  const pageHint = job.intake?.pages
-    ? job.intake.pages.split(/\n/).filter(Boolean).length
-    : 2;
+  const pageHint = 2; // default capture pages until sitemap propose returns
 
   return {
     overall_eta: `about 2–4 days (${pageHint} pages × 2 devices in this run)`,

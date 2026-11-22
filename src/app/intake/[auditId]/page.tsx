@@ -2,8 +2,6 @@ import { notFound } from "next/navigation";
 import { getAudit } from "@/lib/audit/store";
 import { IntakeForm } from "./IntakeForm";
 
-
-
 export const instant = false;
 type Props = { params: Promise<{ auditId: string }> };
 
@@ -39,10 +37,11 @@ export default async function IntakeAuditPage({ params }: Props) {
           margin: "0.35rem 0 0.5rem",
         }}
       >
-        Tell us about your site
+        Client intake
       </h1>
       <p style={{ color: "#3a4a55", maxWidth: "40rem" }}>
-        Required questions only for this MVP. Save takes you to GA4 connect next.
+        Filled by a Cranial teammate on the client&apos;s behalf. One section at a
+        time. Saving the last section takes you to GA4 connect.
       </p>
       <IntakeForm auditId={auditId} initial={job.intake} />
     </main>

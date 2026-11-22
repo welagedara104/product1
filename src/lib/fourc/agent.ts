@@ -1,3 +1,13 @@
+import {
+  intakeCompetitors,
+  intakeCustomerView,
+  intakeDifference,
+  intakeGoalLabel,
+  intakeMarket,
+  intakeTestimonials,
+  intakeWhatYouSell,
+  intakeWhyNot,
+} from "@/lib/audit/intake-fields";
 import type { IntakeAnswers } from "@/lib/audit/types";
 import type {
   FourCResearch,
@@ -30,6 +40,13 @@ export function runFourCResearch(intake: IntakeAnswers): {
 } {
   const forceFlag = detectForceFlag(intake);
   const savedAt = nowIso();
+  const difference = intakeDifference(intake);
+  const customerView = intakeCustomerView(intake);
+  const whyNot = intakeWhyNot(intake);
+  const competitors = intakeCompetitors(intake);
+  const whatYouSell = intakeWhatYouSell(intake);
+  const testimonials = intakeTestimonials(intake);
+  const market = intakeMarket(intake);
 
   const inputs: FourCStepOutput = {
     step: "inputs",
@@ -39,15 +56,16 @@ export function runFourCResearch(intake: IntakeAnswers): {
     body: {
       client_words: {
         business: intake.business_name,
-        sell: intake.what_you_sell,
-        difference: intake.difference,
-        customer_opinion: intake.customer_opinion,
-        why_not: intake.why_not_book,
-        competitors: intake.competitors,
+        sell: whatYouSell,
+        difference,
+        testimonials,
+        customer_opinion: customerView,
+        why_not: whyNot,
+        competitors,
       },
       public_records: "None available (fixture)",
       agency_past_work: "None available (fixture)",
-      field_intel: intake.market,
+      field_intel: intake.field_intel || market,
     },
   };
 
@@ -55,37 +73,37 @@ export function runFourCResearch(intake: IntakeAnswers): {
     step: "company",
     title: "Company",
     saved_at: savedAt,
-    summary: `Company in its own words: ${clip(intake.difference, 100)}`,
+    summary: `Company in its own words: ${clip(difference, 100)}`,
     body: {
       quotes: [
         {
           q: "What do you sell?",
-          a: intake.what_you_sell,
+          a: whatYouSell,
           source: "intake",
         },
         {
           q: "Meaningful difference?",
-          a: intake.difference,
+          a: difference,
           source: "intake",
         },
         {
-          q: "Who books and why?",
-          a: intake.customer_opinion,
+          q: "Where do people buy if not from you?",
+          a: customerView,
           source: "intake",
         },
       ],
       hypotheses: [
-        { id: "H1", text: clip(intake.customer_opinion, 140) },
-        { id: "H2", text: clip(intake.difference, 140) },
-        { id: "H3", text: clip(intake.why_not_book, 140) },
+        { id: "H1", text: clip(customerView, 140) },
+        { id: "H2", text: clip(difference, 140) },
+        { id: "H3", text: clip(whyNot, 140) },
       ],
       evidence_verdicts: [
         {
-          claim: intake.difference,
+          claim: difference,
           verdict: forceFlag ? "fair inference" : "supported",
         },
         {
-          claim: intake.customer_opinion,
+          claim: customerView,
           verdict: forceFlag ? "unsupported as stated" : "fair inference",
         },
       ],
@@ -102,14 +120,14 @@ export function runFourCResearch(intake: IntakeAnswers): {
         "OTA switchers hunting last-minute deals",
       ]
     : [
-        clip(intake.customer_opinion, 80),
+        clip(customerView, 80),
         "Couples comparing direct vs OTA on total cost",
         "Second-timers who already trust the stay",
       ];
 
   const step2Verdict = forceFlag
     ? "Right on price clarity mattering; wrong on the core audience."
-    : `Right on ${clip(intake.customer_opinion, 60)}; refine on why-not barriers.`;
+    : `Right on ${clip(customerView, 60)}; refine on why-not barriers.`;
 
   const customer: FourCStepOutput = {
     step: "customer",
@@ -127,7 +145,7 @@ export function runFourCResearch(intake: IntakeAnswers): {
       ],
       shortlist,
       one_line_verdict: step2Verdict,
-      why_not_barriers: intake.why_not_book.split(/[;.]/).map((s) => s.trim()).filter(Boolean),
+      why_not_barriers: whyNot.split(/[;.]/).map((s) => s.trim()).filter(Boolean),
     },
   };
 
@@ -135,7 +153,7 @@ export function runFourCResearch(intake: IntakeAnswers): {
     step: "category",
     title: "Category",
     saved_at: savedAt,
-    summary: `Alternatives include: ${intake.competitors}`,
+    summary: `Alternatives include: ${competitors}`,
     body: {
       alternatives: [
         "Book direct on this site",
@@ -144,7 +162,7 @@ export function runFourCResearch(intake: IntakeAnswers): {
         "Delay the trip",
         "Do nothing this season",
       ],
-      competitors: intake.competitors,
+      competitors,
       reconciliation: forceFlag
         ? {
             H1: "weakened",
@@ -249,6 +267,12 @@ export function runFourCSynthesis(
   const centre =
     "Show the stay, the total and a short safe checkout before they compare.";
 
+  const difference = intakeDifference(intake);
+  const competitors = intakeCompetitors(intake);
+  const whatYouSell = intakeWhatYouSell(intake);
+  const whyNot = intakeWhyNot(intake);
+  const market = intakeMarket(intake);
+
   const synthesis: FourCStepOutput = {
     step: "synthesis",
     title: "One-slide synthesis",
@@ -256,20 +280,20 @@ export function runFourCSynthesis(
     summary: centre,
     body: {
       themes: {
-        company: clip(intake.difference, 80),
+        company: clip(difference, 80),
         customer: clip(customerViewSummary, 80),
-        category: clip(intake.competitors, 80),
+        category: clip(competitors, 80),
         culture: "Plan once, hate surprises",
       },
       points: {
-        company: [intake.what_you_sell, intake.difference],
-        customer: [customerViewSummary, intake.why_not_book],
-        category: intake.competitors
+        company: [whatYouSell, difference],
+        customer: [customerViewSummary, whyNot],
+        category: competitors
           .split(/[,;\n]/)
           .map((s) => s.trim())
           .filter(Boolean)
           .slice(0, 3),
-        culture: [intake.market, "Plan once, hate surprises"],
+        culture: [market, "Plan once, hate surprises"],
       },
       collisions: {
         "company×customer": "Site story vs what guests say stops them booking.",
@@ -290,7 +314,7 @@ export function runFourCSynthesis(
     summary: `${clip(customerViewSummary, 60)} trades uncertainty for a settled path.`,
     body: {
       customer_insight: customerViewSummary,
-      category_movement: `Buyers also consider: ${intake.competitors}`,
+      category_movement: `Buyers also consider: ${competitors}`,
       primary_tension: `${clip(customerViewSummary, 50)} trades unclear totals for a settled direct path. ${intake.business_name} ends that trade.`,
       tiers: [
         "See the stay clearly on Home",
@@ -306,7 +330,7 @@ export function runFourCSynthesis(
         evidence: "Built from Steps 1–4 after customer view confirmed.",
       },
       client_decisions: [
-        intake.goal_detail,
+        intakeGoalLabel(intake),
         "Confirm page list and booking stop before payment.",
       ],
     },

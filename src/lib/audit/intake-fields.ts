@@ -1,6 +1,6 @@
 import type { IntakeAnswers } from "@/lib/audit/types";
 
-/** Default capture targets until sitemap propose exists (pages section removed). */
+/** Default demo capture targets when live sitemap capture is skipped / fails. */
 export const DEFAULT_CAPTURE_PAGES = "/demo-site\n/demo-site/book";
 
 export function intakeDifference(intake: IntakeAnswers): string {

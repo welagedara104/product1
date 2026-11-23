@@ -57,13 +57,23 @@ npm run build
 
 | Need | Env | Without it |
 |---|---|---|
-| GA4 OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Tier-1 **fixture** analytics |
+| GA4 OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Tier-1 **fixture** analytics (or CSV/PDF upload later) |
 | Creative Score API | `CREATIVE_SCORE_API_KEY` | Fixture scores + TODO in stage log |
 | Expert login | `EXPERT_ACCESS_PASSWORD` | Default `phase1-expert` |
 | Report login | `REPORT_ACCESS_PASSWORD` | Default `phase0-fixture` |
 | Transactional email | (none yet) | Stub files in `.data/emails/` |
+| Behaviour tools (CS etc.) | (Phase 3) | Connector stubs + upload fallback; never passwords |
 
-Local audit data lives under `.data/` (gitignored).
+Local audit data lives under `.data/` (gitignored). Captures: `.data/captures/{auditId}/{page}/{d|m}/` (see `src/lib/capture/README.md`). Operator mirror: `Desktop/{Client}/Screenshots/{page}/`.
+
+### Capture / sitemap (lib)
+
+```ts
+import { discoverSitePages } from "@/lib/capture/sitemap";
+import { runCapture } from "@/lib/capture/runner";
+// discoverSitePages(url) → sitemap.xml (+ nested) or nav crawl
+// runCapture({ auditId, intake, baseUrl }) → URL capture or demo fallback
+```
 
 ## Defaults chosen (ask Kavinda only if wrong)
 

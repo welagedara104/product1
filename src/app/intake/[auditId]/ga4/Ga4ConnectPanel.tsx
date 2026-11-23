@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Ga4Connection } from "@/lib/audit/types";
+import type { ConnectorPlan } from "@/lib/connectors";
 
 type Props = {
   auditId: string;
@@ -15,6 +16,22 @@ export function Ga4ConnectPanel({ auditId, oauthConfigured, current }: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [ga4, setGa4] = useState(current);
+  const [plan, setPlan] = useState<ConnectorPlan | null>(null);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/audits/${auditId}/ga4`);
+      const data = await res.json();
+      if (cancelled) return;
+      setPlan(data.connector_plan ?? null);
+      setInviteUrl(data.colleague_invite_url ?? data.oauth_url ?? null);
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [auditId, ga4]);
 
   async function connectFixture() {
     setBusy(true);
@@ -31,6 +48,7 @@ export function Ga4ConnectPanel({ auditId, oauthConfigured, current }: Props) {
       return;
     }
     setGa4(data.ga4);
+    setPlan(data.connector_plan ?? null);
     setMessage(data.message);
     router.refresh();
   }
@@ -51,6 +69,16 @@ export function Ga4ConnectPanel({ auditId, oauthConfigured, current }: Props) {
     setMessage(data.gap || data.message || "OAuth not available; use fixture.");
   }
 
+  async function copyInvite() {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setMessage("Colleague invite link copied — they sign in with Google (no password shared with Cranial).");
+    } catch {
+      setMessage(inviteUrl);
+    }
+  }
+
   return (
     <div
       style={{
@@ -68,6 +96,22 @@ export function Ga4ConnectPanel({ auditId, oauthConfigured, current }: Props) {
         OAuth secrets:{" "}
         <strong>{oauthConfigured ? "present" : "missing (use fixture)"}</strong>
       </p>
+      <p style={{ margin: 0, fontSize: 13, color: "#3a4a55" }}>
+        Clients never share Google passwords with Cranial. Prefer OAuth (or a
+        colleague invite). CSV/PDF uploads are the fallback when OAuth is not
+        possible.
+      </p>
+      {plan ? (
+        <div style={{ fontSize: 13, background: "#f7f4ef", padding: "0.75rem" }}>
+          <div>
+            Analytics: <strong>{plan.analytics.status}</strong> — {plan.analytics.note}
+          </div>
+          <div style={{ marginTop: 6 }}>
+            Behaviour: <strong>{plan.behaviour.status}</strong> —{" "}
+            {plan.behaviour.note}
+          </div>
+        </div>
+      ) : null}
       {ga4 ? (
         <div style={{ fontSize: 14, background: "#eef6f3", padding: "0.75rem" }}>
           <div>
@@ -86,6 +130,14 @@ export function Ga4ConnectPanel({ auditId, oauthConfigured, current }: Props) {
           style={btn(oauthConfigured)}
         >
           Connect with Google OAuth
+        </button>
+        <button
+          type="button"
+          disabled={busy || !inviteUrl}
+          onClick={copyInvite}
+          style={btn(Boolean(inviteUrl))}
+        >
+          Copy colleague invite link
         </button>
         <button
           type="button"

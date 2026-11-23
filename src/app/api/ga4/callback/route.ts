@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getAudit, saveAudit } from "@/lib/audit/store";
 import { markGa4OAuthConnected, resolveTier } from "@/lib/ga4/connect";
-
+import {
+  exchangeGa4AuthCode,
+  listGa4AccountSummaries,
+  storeGa4RefreshTokenRef,
+} from "@/lib/ga4/oauth";
 
 /**
- * OAuth callback stub.
- * Exchanges code for tokens only when GOOGLE_CLIENT_* are set.
- * Without secrets, redirects back with an error note (use fixture instead).
+ * OAuth callback: exchange code for tokens when GOOGLE_CLIENT_* are set.
+ * Picks the first visible GA4 property (follow-up UI can re-select).
+ * Without secrets, redirects with an error (use fixture instead).
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -20,7 +24,10 @@ export async function GET(req: Request) {
 
   if (error || !code) {
     return NextResponse.redirect(
-      new URL(`/intake/${state}/ga4?error=${encodeURIComponent(error || "no_code")}`, url.origin),
+      new URL(
+        `/intake/${state}/ga4?error=${encodeURIComponent(error || "no_code")}`,
+        url.origin,
+      ),
     );
   }
 
@@ -36,20 +43,49 @@ export async function GET(req: Request) {
     );
   }
 
-  // TODO: exchange `code` for refresh token via Google token endpoint,
-  // encrypt and store. For Phase 1 we mark connected with a placeholder property
-  // when the code is present (real exchange needs deployed redirect URI).
   const job = await getAudit(state);
   if (!job) {
     return NextResponse.redirect(new URL("/intake?error=audit_not_found", url.origin));
   }
 
+  const exchanged = await exchangeGa4AuthCode(code);
+  if (!exchanged.ok) {
+    return NextResponse.redirect(
+      new URL(
+        `/intake/${state}/ga4?error=${encodeURIComponent(exchanged.error)}`,
+        url.origin,
+      ),
+    );
+  }
+
+  const stored = await storeGa4RefreshTokenRef(state, exchanged.refresh_token);
+  const properties = await listGa4AccountSummaries(exchanged.access_token);
+  const first = properties[0];
+
   job.ga4 = markGa4OAuthConnected(
-    "properties/oauth-pending-selection",
-    "GA4 property (select in a follow-up step)",
+    first?.property_id ?? "properties/oauth-pending-selection",
+    first?.property_name ?? "GA4 property (select in a follow-up step)",
+    {
+      has_refresh_token: stored.has_refresh_token,
+      note: first
+        ? `Connected via Google OAuth (analytics.readonly). Using ${first.property_name}. ${properties.length > 1 ? `${properties.length} properties visible — picker TODO.` : ""}`.trim()
+        : "Connected via Google OAuth; no properties visible yet — pick a property in a follow-up step or confirm the Google account has Analytics access.",
+    },
   );
   job.tier = resolveTier(job.ga4);
+  job.stages = job.stages.map((s) =>
+    s.id === "ga4_connect"
+      ? {
+          ...s,
+          status: "done",
+          finished_at: new Date().toISOString(),
+          log: [...s.log, job.ga4?.note ?? "GA4 OAuth connected"],
+        }
+      : s,
+  );
   await saveAudit(job);
 
-  return NextResponse.redirect(new URL(`/intake/${state}/ga4?connected=1`, url.origin));
+  return NextResponse.redirect(
+    new URL(`/intake/${state}/ga4?connected=1`, url.origin),
+  );
 }

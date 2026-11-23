@@ -33,6 +33,7 @@ import {
 } from "@/lib/fourc/email";
 import type { FlagRecord } from "@/lib/fourc/types";
 import { draftFlagWording, evaluateValidation } from "@/lib/fourc/validate";
+import { buildConnectorPlan } from "@/lib/connectors";
 import {
   connectGa4Fixture,
   ga4OAuthConfigured,
@@ -128,13 +129,16 @@ async function runIndependentStages(
       started_at: new Date().toISOString(),
     });
     job = await saveAudit(job);
-    job.stages = logStage(
-      job.stages,
-      "analytics",
-      job.tier >= 1
-        ? "GA4 fixture/OAuth figures attached for diagnosis."
-        : "No GA4; analytics stage records the gap only.",
-    );
+    {
+      const plan = buildConnectorPlan(intake, job.ga4);
+      job.stages = logStage(
+        job.stages,
+        "analytics",
+        job.tier >= 1
+          ? `GA4 fixture/OAuth figures attached for diagnosis. Behaviour: ${plan.behaviour.status} (${plan.behaviour.provider_label}).`
+          : `No GA4; analytics stage records the gap only. Behaviour: ${plan.behaviour.status}.`,
+      );
+    }
     job.stages = patchStage(job.stages, "analytics", {
       status: "done",
       finished_at: new Date().toISOString(),

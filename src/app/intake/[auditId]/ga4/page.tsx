@@ -40,8 +40,10 @@ export default async function Ga4Page({ params, searchParams }: Props) {
         Connect Google Analytics 4
       </h1>
       <p style={{ maxWidth: "40rem", color: "#3a4a55" }}>
-        Tier 1 needs GA4. If Google OAuth secrets are not set on this machine, use the
-        fixture so you can still run the full expert loop.
+        Tier 1 needs GA4 via Google OAuth (read-only) — never a shared password. If
+        OAuth secrets are not set on this machine, use the fixture (or later a CSV/PDF
+        upload) so you can still run the full expert loop. Behaviour tools
+        (ContentSquare, etc.) are stubbed until Phase 3.
       </p>
       {sp.error ? (
         <p style={{ color: "#8a2a1a" }}>OAuth note: {sp.error}</p>

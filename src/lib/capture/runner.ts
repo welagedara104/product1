@@ -3,31 +3,154 @@ import { promises as fs } from "fs";
 import path from "path";
 import { DEFAULT_CAPTURE_PAGES } from "@/lib/audit/intake-fields";
 import type { CaptureFrame, IntakeAnswers } from "@/lib/audit/types";
-
-const CAPTURE_ROOT = path.join(process.cwd(), ".data", "captures");
-
-const VIEWPORTS = {
-  d: { width: 1440, height: 900 },
-  m: { width: 390, height: 844 },
-} as const;
+import { shouldAbortCaptureRequest } from "@/lib/capture/payment-guard";
+import {
+  CAPTURE_ROOT,
+  pageSlugFromUrl,
+  VIEWPORTS,
+  type CaptureDevice,
+} from "@/lib/capture/paths";
+import { discoverSitePages } from "@/lib/capture/sitemap";
+import { capturePagesWithPlaywright } from "@/lib/capture/screenshotter";
 
 /**
- * Capture desktop 1440 + mobile 390.
- * Default: inline HTML (avoids deadlocking the Next server while /run is in-flight).
- * Optional: CAPTURE_TARGET=http to hit baseUrl/demo-site when a second server is up.
+ * Capture orchestration.
+ *
+ * Prefer real URL capture when intake.website_url is reachable:
+ *   1) discover pages via sitemap (+ nested) or nav crawl
+ *   2) screenshot desktop 1440 + mobile 390 (full-page, first-view, frames)
+ *
+ * Fallback: previous demo behaviour (inline HTML, or CAPTURE_TARGET=http → /demo-site)
+ * so the pipeline stays runnable when live capture fails.
+ *
  * Always stops before payment — never loads or submits the payment step.
+ *
+ * Env:
+ *   CAPTURE_MODE=auto|url|demo  (default auto)
+ *   CAPTURE_TARGET=http         (demo path hits baseUrl/demo-site)
+ *   CAPTURE_MAX_PAGES=N         (default 12 for pipeline runs)
  */
 export async function runCapture(opts: {
   auditId: string;
   intake: IntakeAnswers;
   baseUrl: string;
 }): Promise<CaptureFrame[]> {
+  const mode = (process.env.CAPTURE_MODE || "auto").toLowerCase();
+  const maxPages = Number(process.env.CAPTURE_MAX_PAGES || 12);
+
+  if (mode !== "demo") {
+    try {
+      const frames = await runUrlCapture(opts, maxPages);
+      if (frames.length) return frames;
+    } catch (e) {
+      if (mode === "url") throw e;
+      // auto: fall through to demo
+      console.warn(
+        "[capture] URL capture failed; falling back to demo:",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
+  return runDemoCapture(opts);
+}
+
+async function runUrlCapture(
+  opts: { auditId: string; intake: IntakeAnswers; baseUrl: string },
+  maxPages: number,
+): Promise<CaptureFrame[]> {
+  const websiteUrl = opts.intake.website_url?.trim();
+  if (!websiteUrl) {
+    throw new Error("No website_url on intake");
+  }
+
+  // Placeholders / self-URLs would deadlock the Next server mid-/run — use demo path.
+  if (isDemoPlaceholderUrl(websiteUrl, opts.baseUrl)) {
+    throw new Error(
+      "Placeholder or local website_url — use demo capture (set CAPTURE_TARGET=http for /demo-site)",
+    );
+  }
+
+  const targetUrl = websiteUrl.startsWith("/")
+    ? `${opts.baseUrl.replace(/\/$/, "")}${websiteUrl}`
+    : websiteUrl;
+
+  const discovered = await discoverSitePages(targetUrl, { maxPages });
+  const pages = discovered.pages
+    .filter((p) => !shouldAbortCaptureRequest(p.url, "GET"))
+    .slice(0, maxPages)
+    .map((p, i) => ({
+      url: p.url,
+      pageSlug: pageSlugFromUrl(p.url, i),
+    }));
+
+  if (!pages.length) {
+    throw new Error(`No capturable pages discovered for ${targetUrl}`);
+  }
+
+  const result = await capturePagesWithPlaywright({
+    auditId: opts.auditId,
+    clientName: opts.intake.business_name || "Client",
+    pages,
+  });
+
+  // Persist discovery notes next to captures for operators.
+  const notePath = path.join(CAPTURE_ROOT, opts.auditId, "discovery.json");
+  await fs.mkdir(path.dirname(notePath), { recursive: true });
+  await fs.writeFile(
+    notePath,
+    JSON.stringify(
+      {
+        website_url: websiteUrl,
+        target_url: targetUrl,
+        discovered,
+        capture_notes: result.notes,
+        captured_at: new Date().toISOString(),
+      },
+      null,
+      2,
+    ),
+  );
+
+  return result.frames;
+}
+
+function isDemoPlaceholderUrl(websiteUrl: string, baseUrl: string): boolean {
+  if (websiteUrl.startsWith("/demo-site") || websiteUrl.startsWith("/")) {
+    return true;
+  }
+  try {
+    const u = new URL(websiteUrl.includes("://") ? websiteUrl : `https://${websiteUrl}`);
+    if (
+      u.hostname === "example.com" ||
+      u.hostname === "localhost" ||
+      u.hostname === "127.0.0.1"
+    ) {
+      return true;
+    }
+    const base = new URL(baseUrl);
+    if (u.origin === base.origin) return true;
+  } catch {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Original demo capture path (inline HTML or /demo-site over HTTP).
+ * Kept as reliable fallback when live URL capture fails.
+ */
+async function runDemoCapture(opts: {
+  auditId: string;
+  intake: IntakeAnswers;
+  baseUrl: string;
+}): Promise<CaptureFrame[]> {
   const { auditId, intake, baseUrl } = opts;
-  const outDir = path.join(CAPTURE_ROOT, auditId);
+  const outDir = path.join(CAPTURE_ROOT, auditId, "_demo");
   await fs.mkdir(outDir, { recursive: true });
 
   const pageIds = parsePageIds(intake);
-  const devices = devicesFor("both");
+  const devices: CaptureDevice[] = ["d", "m"];
   const frames: CaptureFrame[] = [];
   const useHttp = process.env.CAPTURE_TARGET === "http";
 
@@ -35,7 +158,7 @@ export async function runCapture(opts: {
   try {
     browser = await chromium.launch({ headless: true });
     for (const pageId of pageIds) {
-      if (pageId === "payment") continue; // hard stop before payment
+      if (pageId === "payment") continue;
       for (const device of devices) {
         const viewport = VIEWPORTS[device];
         const context = await browser.newContext({
@@ -45,13 +168,8 @@ export async function runCapture(opts: {
         const page = await context.newPage();
 
         await page.route("**/*", async (route) => {
-          const url = route.request().url().toLowerCase();
-          const method = route.request().method();
-          if (
-            url.includes("/book/payment") ||
-            url.includes("stripe.com") ||
-            (method === "POST" && url.includes("payment"))
-          ) {
+          const req = route.request();
+          if (shouldAbortCaptureRequest(req.url(), req.method())) {
             await route.abort();
             return;
           }
@@ -72,11 +190,14 @@ export async function runCapture(opts: {
           }
         } else {
           targetLabel = `inline://${pageId}`;
-          await page.setContent(demoHtml(pageId), { waitUntil: "domcontentloaded" });
+          await page.setContent(demoHtml(pageId), {
+            waitUntil: "domcontentloaded",
+          });
         }
 
-        const fileName = `${pageId}-${device}.png`;
-        const filePath = path.join(outDir, fileName);
+        const pageDir = path.join(outDir, pageId, device);
+        await fs.mkdir(pageDir, { recursive: true });
+        const filePath = path.join(pageDir, "full-page.png");
         await page.screenshot({ path: filePath, fullPage: true });
         await context.close();
 
@@ -98,12 +219,6 @@ export async function runCapture(opts: {
   return frames;
 }
 
-function devicesFor(mode: "both" | "desktop" | "mobile"): Array<"d" | "m"> {
-  if (mode === "desktop") return ["d"];
-  if (mode === "mobile") return ["m"];
-  return ["d", "m"];
-}
-
 function parsePageIds(_intake: IntakeAnswers): string[] {
   const lines = DEFAULT_CAPTURE_PAGES.split(/[\n,]+/)
     .map((s) => s.trim().toLowerCase())
@@ -112,7 +227,6 @@ function parsePageIds(_intake: IntakeAnswers): string[] {
   for (const line of lines) {
     if (line.includes("book")) ids.add("book");
     if (line.includes("payment") || line.includes("pay")) {
-      // Explicitly ignore payment URLs in the page list.
       continue;
     }
   }

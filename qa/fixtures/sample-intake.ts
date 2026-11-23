@@ -2,10 +2,8 @@
 export const sampleIntakePayload = {
   business_name: "Coral Reach Resort",
   website_url: "https://example.com",
-  difference_from_website: false,
-  difference: "Clear evenings and totals",
-  testimonials_from_website: true,
-  testimonials: "",
+  why_choose_from_website: false,
+  why_choose: "Clear evenings and totals",
   field_intel: "Repeat guests mostly come in shoulder season",
   website_goal: "buy" as const,
   website_goal_other: "",

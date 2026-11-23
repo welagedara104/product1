@@ -41,8 +41,8 @@ export function IntakeForm({ auditId, initial }: Props) {
       } catch {
         return "Enter a valid website URL (include https://).";
       }
-      if (!form.difference_from_website && !form.difference.trim()) {
-        return "Say what makes them different, or tick that the website already gives it.";
+      if (!form.why_choose_from_website && !form.why_choose.trim()) {
+        return "Say why customers choose them, or tick that the website already gives it.";
       }
       return null;
     }
@@ -232,21 +232,12 @@ function AboutSection({ form, set }: { form: IntakeAnswers; set: SetFn }) {
           style={input}
         />
       </Field>
-      <Field label="What makes you different from the places buyers also consider? *">
+      <Field label="Why do customers choose you? (testimonials / top reasons) *">
         <WebsiteOrType
-          fromWebsite={form.difference_from_website}
-          onFromWebsite={(v) => set("difference_from_website", v)}
-          value={form.difference}
-          onValue={(v) => set("difference", v)}
-          placeholder="Meaningful difference, in their words"
-        />
-      </Field>
-      <Field label="Why do customers choose you? (testimonials / top reasons)">
-        <WebsiteOrType
-          fromWebsite={form.testimonials_from_website}
-          onFromWebsite={(v) => set("testimonials_from_website", v)}
-          value={form.testimonials}
-          onValue={(v) => set("testimonials", v)}
+          fromWebsite={form.why_choose_from_website}
+          onFromWebsite={(v) => set("why_choose_from_website", v)}
+          value={form.why_choose}
+          onValue={(v) => set("why_choose", v)}
           placeholder="Quotes or top reasons"
         />
       </Field>

@@ -24,10 +24,8 @@ function baseJob(): AuditJob {
     intake: {
       business_name: "Gate Test Resort",
       website_url: "https://example.com",
-      difference_from_website: false,
-      difference: "Quiet lagoon",
-      testimonials_from_website: true,
-      testimonials: "",
+      why_choose_from_website: false,
+      why_choose: "Quiet lagoon",
       field_intel: "",
       website_goal: "buy",
       website_goal_other: "",

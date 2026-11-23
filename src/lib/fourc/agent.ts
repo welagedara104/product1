@@ -4,8 +4,8 @@ import {
   intakeDifference,
   intakeGoalLabel,
   intakeMarket,
-  intakeTestimonials,
   intakeWhatYouSell,
+  intakeWhyChoose,
   intakeWhyNot,
 } from "@/lib/audit/intake-fields";
 import type { IntakeAnswers } from "@/lib/audit/types";
@@ -45,7 +45,7 @@ export function runFourCResearch(intake: IntakeAnswers): {
   const whyNot = intakeWhyNot(intake);
   const competitors = intakeCompetitors(intake);
   const whatYouSell = intakeWhatYouSell(intake);
-  const testimonials = intakeTestimonials(intake);
+  const whyChoose = intakeWhyChoose(intake);
   const market = intakeMarket(intake);
 
   const inputs: FourCStepOutput = {
@@ -57,8 +57,8 @@ export function runFourCResearch(intake: IntakeAnswers): {
       client_words: {
         business: intake.business_name,
         sell: whatYouSell,
-        difference,
-        testimonials,
+        difference: whyChoose,
+        why_choose: whyChoose,
         customer_opinion: customerView,
         why_not: whyNot,
         competitors,

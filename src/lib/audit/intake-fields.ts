@@ -1,18 +1,16 @@
 import type { IntakeAnswers } from "@/lib/audit/types";
 
-/** Default capture targets until sitemap propose exists (pages section removed). */
+/** Default capture targets until sitemap propose exists. */
 export const DEFAULT_CAPTURE_PAGES = "/demo-site\n/demo-site/book";
 
+/** Why-choose / meaningful difference text for research helpers. */
 export function intakeDifference(intake: IntakeAnswers): string {
-  if (intake.difference_from_website) return "The website already gives you this";
-  return intake.difference.trim() || "Not provided";
+  if (intake.why_choose_from_website) return "The website already gives you this";
+  return intake.why_choose.trim() || "Not provided";
 }
 
-export function intakeTestimonials(intake: IntakeAnswers): string {
-  if (intake.testimonials_from_website) {
-    return "The website already gives you this";
-  }
-  return intake.testimonials.trim() || "Not provided";
+export function intakeWhyChoose(intake: IntakeAnswers): string {
+  return intakeDifference(intake);
 }
 
 /** Competitive alternatives — used where pipeline used to read competitors. */
@@ -23,7 +21,7 @@ export function intakeCompetitors(intake: IntakeAnswers): string {
     .join("; ");
 }
 
-/** Primary customer/hypothesis signal after customer-view section was removed. */
+/** Primary customer/hypothesis signal. */
 export function intakeCustomerView(intake: IntakeAnswers): string {
   return intake.buy_elsewhere.trim();
 }
@@ -70,8 +68,7 @@ export function intakeForceFlagBlob(intake: IntakeAnswers): string {
   return [
     intake.buy_elsewhere,
     intake.field_intel,
-    intake.difference,
-    intake.testimonials,
+    intake.why_choose,
     intake.cool_competitor_sites,
     intake.wish_owned_sites,
   ].join(" ");
@@ -81,10 +78,8 @@ export function emptyIntakeDraft(): IntakeAnswers {
   return {
     business_name: "",
     website_url: "",
-    difference_from_website: false,
-    difference: "",
-    testimonials_from_website: false,
-    testimonials: "",
+    why_choose_from_website: false,
+    why_choose: "",
     field_intel: "",
     website_goal: "buy",
     website_goal_other: "",
@@ -107,10 +102,8 @@ export function sampleIntakeAnswers(): IntakeAnswers {
   return {
     business_name: "Coral Reach Resort",
     website_url: "https://example.com",
-    difference_from_website: false,
-    difference: "Quiet lagoon evenings with clear totals before payment",
-    testimonials_from_website: true,
-    testimonials: "",
+    why_choose_from_website: false,
+    why_choose: "Quiet lagoon evenings with clear totals before payment",
     field_intel: "Repeat guests mostly come in shoulder season",
     website_goal: "buy",
     website_goal_other: "",

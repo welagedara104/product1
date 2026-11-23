@@ -67,10 +67,9 @@ export const IntakeAnswersSchema = z
   .object({
     business_name: z.string().min(1),
     website_url: z.string().url(),
-    difference_from_website: z.boolean(),
-    difference: z.string().default(""),
-    testimonials_from_website: z.boolean(),
-    testimonials: z.string().default(""),
+    /** Why customers choose you — replaces old “difference” field. */
+    why_choose_from_website: z.boolean(),
+    why_choose: z.string().default(""),
     field_intel: z.string().default(""),
     website_goal: z.enum(["buy", "inquire", "other"]),
     website_goal_other: z.string().default(""),
@@ -87,11 +86,12 @@ export const IntakeAnswersSchema = z
     access_barriers: z.string().default(""),
   })
   .superRefine((data, ctx) => {
-    if (!data.difference_from_website && !data.difference.trim()) {
+    if (!data.why_choose_from_website && !data.why_choose.trim()) {
       ctx.addIssue({
         code: "custom",
-        message: "Type the difference, or tick that the website already gives it",
-        path: ["difference"],
+        message:
+          "Say why customers choose them, or tick that the website already gives it",
+        path: ["why_choose"],
       });
     }
     if (data.website_goal === "other" && !data.website_goal_other.trim()) {
